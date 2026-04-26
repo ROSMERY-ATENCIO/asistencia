@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Asistencia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <!-- QRCode.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --c1: #6ee7f7; --c2: #a78bfa; --c3: #f472b6;
+      --bg: #060a12; --surface: rgba(255,255,255,0.04); --surface2: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.1); --border2: rgba(110,231,247,0.3);
+      --text: #f0f4ff; --muted: rgba(240,244,255,0.45);
+      --r: 20px; --r-sm: 12px;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 20px 60px;
+      color: var(--text);
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(110,231,247,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(110,231,247,0.035) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 80% 70% at 50% 40%, transparent 30%, rgba(6,10,18,0.88) 100%);
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+    .orb1 { width:600px;height:600px; background:radial-gradient(circle,rgba(110,231,247,0.16),transparent 70%); top:-200px;left:-220px; animation:f1 14s ease-in-out infinite alternate; }
+    .orb2 { width:500px;height:500px; background:radial-gradient(circle,rgba(167,139,250,0.14),transparent 70%); bottom:-150px;right:-150px; animation:f2 18s ease-in-out infinite alternate; }
+    .orb3 { width:350px;height:350px; background:radial-gradient(circle,rgba(244,114,182,0.11),transparent 70%); top:45%;left:50%; animation:f3 22s ease-in-out infinite alternate; }
+    .orb4 { width:220px;height:220px; background:radial-gradient(circle,rgba(110,231,247,0.1),transparent 70%); top:18%;right:8%; animation:f4 12s ease-in-out infinite alternate; }
+    .orb5 { width:180px;height:180px; background:radial-gradient(circle,rgba(167,139,250,0.09),transparent 70%); bottom:20%;left:5%; animation:f1 16s ease-in-out infinite alternate-reverse; }
+    @keyframes f1 { to { transform:translate(70px,90px); } }
+    @keyframes f2 { to { transform:translate(-70px,-70px); } }
+    @keyframes f3 { to { transform:translate(-40px,60px); } }
+    @keyframes f4 { to { transform:translate(30px,-50px); } }
+
+    #starsCanvas { position:fixed; inset:0; pointer-events:none; z-index:0; }
+
+    .beam { position:fixed; pointer-events:none; z-index:0; width:1px; border-radius:2px; animation:bfade ease-in-out infinite; }
+    .beam1 { height:340px; top:6%;left:17%; transform:rotate(28deg); animation-duration:7s; background:linear-gradient(to bottom,transparent,rgba(110,231,247,0.18),transparent); }
+    .beam2 { height:260px; top:55%;right:14%; transform:rotate(-22deg); animation-duration:9s; animation-delay:3s; background:linear-gradient(to bottom,transparent,rgba(167,139,250,0.15),transparent); }
+    .beam3 { height:200px; bottom:12%;left:43%; transform:rotate(14deg); animation-duration:11s; animation-delay:1.5s; background:linear-gradient(to bottom,transparent,rgba(244,114,182,0.12),transparent); }
+    @keyframes bfade { 0%,100%{opacity:0;} 50%{opacity:1;} }
+
+    .cdeco { position:fixed; pointer-events:none; z-index:0; }
+
+    .layout {
+      width: 100%; max-width: 1300px;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      align-items: flex-start;
+      position: relative; z-index: 1;
+    }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+    .form-col { display: flex; flex-direction: column; gap: 18px; }
+    .db-col { position: sticky; top: 32px; display: flex; flex-direction: column; gap: 18px; }
+
+    .header { text-align: center; padding: 4px 0 12px; animation: fadeUp 0.6s ease both; }
+    .header-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(110,231,247,0.1); border: 1px solid rgba(110,231,247,0.25);
+      border-radius: 50px; padding: 5px 14px; font-size: 0.72rem; font-weight: 500;
+      color: var(--c1); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .header h1 {
+      font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--c1) 0%, var(--c2) 50%, var(--c3) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.1;
+    }
+    .header p { color: var(--muted); font-size: 0.85rem; margin-top: 5px; }
+
+    .card {
+      background: var(--surface); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: var(--r);
+      padding: 24px; position: relative; overflow: hidden;
+      animation: fadeUp 0.6s ease both;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(110,231,247,0.4), transparent);
+    }
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card:nth-child(3) { animation-delay: 0.2s; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card-title {
+      font-family: 'Syne', sans-serif; font-size: 0.92rem; font-weight: 700;
+      color: var(--text); display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+    }
+    .icon-wrap {
+      width: 30px; height: 30px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0;
+    }
+    .icon-wrap.teal { background: rgba(110,231,247,0.15); border: 1px solid rgba(110,231,247,0.2); }
+    .icon-wrap.purple { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.2); }
+    .icon-wrap.pink { background: rgba(244,114,182,0.15); border: 1px solid rgba(244,114,182,0.2); }
+
+    .profile-row { display: flex; justify-content: center; margin-bottom: 16px; }
+    .avatar-ring { position: relative; flex-shrink: 0; }
+    .avatar-ring::before {
+      content: ''; position: absolute; inset: -3px; border-radius: 50%;
+      background: conic-gradient(var(--c1), var(--c2), var(--c3), var(--c1));
+      z-index: 0; animation: spin 5s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .profile-avatar {
+      width: 110px; height: 110px; border-radius: 50%; background: #131a28;
+      display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
+      overflow: hidden; position: relative; z-index: 1; border: 2px solid var(--bg);
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 18px; border-radius: 50px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 500; cursor: pointer; border: none;
+      transition: all 0.2s ease; width: 100%; position: relative; overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: linear-gradient(135deg, #6ee7f7 0%, #a78bfa 100%); color: #080c14; font-weight: 700; box-shadow: 0 4px 20px rgba(110,231,247,0.2); }
+    .btn-primary:hover { box-shadow: 0 6px 28px rgba(110,231,247,0.4); filter: brightness(1.05); }
+    .btn-danger { background: rgba(244,63,94,0.12); border: 1px solid rgba(244,63,94,0.25); color: #fb7185; }
+    .btn-danger:hover { background: rgba(244,63,94,0.22); }
+    .btn-dark { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text); }
+    .btn-dark:hover { background: rgba(255,255,255,0.1); }
+    .btn-ghost { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+    .btn-cam { background: linear-gradient(135deg, rgba(110,231,247,0.12), rgba(167,139,250,0.12)); border: 1px solid rgba(110,231,247,0.3); color: var(--c1); font-weight: 600; padding: 13px; }
+    .btn-cam:hover { border-color: rgba(110,231,247,0.6); box-shadow: 0 0 24px rgba(110,231,247,0.12); }
+
+    .note { font-size: 0.76rem; color: var(--muted); line-height: 1.5; }
+    .field-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.73rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px; }
+    input[type="text"] {
+      width: 100%; padding: 12px 16px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif; font-size: 0.92rem; color: var(--text); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]::placeholder { color: rgba(240,244,255,0.2); }
+    input[type="text"]:focus { border-color: rgba(110,231,247,0.5); box-shadow: 0 0 0 3px rgba(110,231,247,0.07); }
+
+    .section-head { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; }
+    .section-head span { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+    .section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .gps-status { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--r-sm); background: var(--surface2); border: 1px solid var(--border); font-size: 0.83rem; color: var(--muted); margin-top: 8px; }
+    .gps-status.ok { color: #34d399; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.07); }
+    .gps-status.error { color: #fb7185; border-color: rgba(251,113,133,0.3); background: rgba(251,113,133,0.07); }
+
+    .camera-container { display: none; position: relative; border-radius: var(--r-sm); overflow: hidden; background: #000; aspect-ratio: 4/3; margin-top: 12px; border: 1px solid rgba(110,231,247,0.2); }
+    .camera-container.visible { display: block; }
+    video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cam-corner { position: absolute; width: 18px; height: 18px; border-color: var(--c1); border-style: solid; opacity: 0.8; }
+    .cam-corner.tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+    .cam-corner.tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+    .cam-corner.bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+    .cam-corner.br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+
+    .camera-controls { display: none; gap: 10px; margin-top: 10px; }
+    .camera-controls .btn { flex: 1; border-radius: var(--r-sm); }
+    canvas#canvas { display: none; }
+    .photo-preview { display: none; width: 100%; border-radius: var(--r-sm); border: 1px solid rgba(110,231,247,0.25); margin-top: 12px; }
+    .photo-preview.visible { display: block; }
+    .cam-error { display: none; margin-top: 10px; padding: 12px 14px; background: rgba(251,113,133,0.07); border: 1px solid rgba(251,113,133,0.2); border-radius: var(--r-sm); color: #fb7185; font-size: 0.82rem; line-height: 1.6; }
+
+    .btn-submit {
+      background: linear-gradient(135deg, #6ee7f7, #a78bfa, #f472b6);
+      background-size: 200% 200%; color: #080c14;
+      font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 800;
+      border-radius: 50px; padding: 16px; border: none; width: 100%;
+      cursor: pointer; letter-spacing: 0.5px;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 8px 32px rgba(110,231,247,0.2);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      animation: fadeUp 0.6s ease 0.3s both, gradShift 4s ease infinite;
+    }
+    @keyframes gradShift { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(110,231,247,0.3); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* ===== DB CARD ===== */
+    .db-card { background: var(--surface); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; animation: fadeUp 0.6s ease 0.15s both; }
+    .db-card::before { content: ''; display: block; height: 1px; background: linear-gradient(90deg, transparent, rgba(244,114,182,0.4), transparent); }
+    .db-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 14px; }
+    .db-header-left { display: flex; align-items: center; gap: 10px; }
+    .db-header-title { font-family: 'Syne', sans-serif; font-size: 0.92rem; font-weight: 700; color: var(--text); }
+    #dbCount { font-size: 0.72rem; background: rgba(110,231,247,0.15); border: 1px solid rgba(110,231,247,0.2); color: var(--c1); padding: 3px 10px; border-radius: 50px; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+    .btn-clear { background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.2); color: #fb7185; font-size: 0.7rem; padding: 4px 10px; border-radius: 50px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .btn-clear:hover { background: rgba(251,113,133,0.2); }
+    #dbEmpty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
+    .db-scroll { max-height: 380px; overflow-y: auto; }
+    .db-scroll::-webkit-scrollbar { width: 4px; }
+    .db-scroll::-webkit-scrollbar-track { background: transparent; }
+    .db-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+    .record-item { display: flex; align-items: center; gap: 12px; padding: 12px 22px; border-top: 1px solid rgba(255,255,255,0.05); transition: background 0.15s; }
+    .record-item:hover { background: rgba(255,255,255,0.04); }
+    .rec-photo { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1.5px solid rgba(110,231,247,0.3); }
+    .rec-avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .rec-info { flex: 1; min-width: 0; }
+    .rec-name { font-weight: 500; font-size: 0.88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rec-dni { font-size: 0.75rem; color: var(--muted); font-family: monospace; letter-spacing: 0.5px; }
+    .rec-meta { text-align: right; flex-shrink: 0; }
+    .rec-hora { font-size: 0.8rem; color: var(--c2); font-weight: 500; }
+    .rec-fecha { font-size: 0.72rem; color: var(--muted); }
+    .rec-gps { font-size: 0.72rem; margin-top: 2px; }
+    .rec-gps a { color: var(--c1); text-decoration: none; }
+
+    /* ===== QR CARD ===== */
+    .qr-card {
+      background: var(--surface); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: var(--r);
+      overflow: hidden; animation: fadeUp 0.6s ease 0.25s both;
+    }
+    .qr-card::before { content: ''; display: block; height: 1px; background: linear-gradient(90deg, transparent, rgba(110,231,247,0.4), transparent); }
+    .qr-body { padding: 20px 22px; }
+    .qr-input-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    .qr-input-row input {
+      flex: 1; padding: 10px 14px;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--text); outline: none;
+      transition: border-color 0.2s;
+    }
+    .qr-input-row input::placeholder { color: rgba(240,244,255,0.2); }
+    .qr-input-row input:focus { border-color: rgba(110,231,247,0.5); }
+    .qr-input-row button {
+      padding: 10px 16px; border-radius: var(--r-sm); border: none; cursor: pointer;
+      background: linear-gradient(135deg, #6ee7f7, #a78bfa); color: #080c14;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem; white-space: nowrap;
+      transition: filter 0.2s, box-shadow 0.2s; box-shadow: 0 4px 16px rgba(110,231,247,0.2);
+    }
+    .qr-input-row button:hover { filter: brightness(1.08); box-shadow: 0 6px 22px rgba(110,231,247,0.35); }
+
+    #qrDisplay {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 16px; background: #ffffff; border-radius: var(--r-sm);
+      margin-bottom: 12px;
+    }
+    #qrDisplay.hidden { display: none; }
+    #qrcode { display: flex; justify-content: center; }
+    #qrcode canvas, #qrcode img { border-radius: 6px; }
+    .qr-label {
+      font-size: 0.72rem; color: #555; font-family: 'DM Sans', sans-serif;
+      text-align: center; word-break: break-all; max-width: 220px;
+    }
+    .qr-actions { display: flex; gap: 8px; }
+    .qr-actions button {
+      flex: 1; padding: 9px; border-radius: var(--r-sm); border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem; cursor: pointer; transition: background 0.2s;
+    }
+    .qr-actions button:hover { background: rgba(255,255,255,0.1); }
+    .qr-btn-page {
+      width: 100%; padding: 10px; border-radius: var(--r-sm); border: 1px solid rgba(110,231,247,0.3);
+      background: rgba(110,231,247,0.08); color: var(--c1); font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; cursor: pointer; transition: background 0.2s; font-weight: 500;
+    }
+    .qr-btn-page:hover { background: rgba(110,231,247,0.15); }
+    .qr-placeholder {
+      text-align: center; padding: 28px 16px; color: var(--muted); font-size: 0.82rem; line-height: 1.7;
+    }
+    .qr-size-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+    .qr-size-row label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0; }
+    .qr-size-row select {
+      flex: 1; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 0.83rem; outline: none; cursor: pointer;
+    }
+
+    /* ===== TOAST ===== */
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(15,22,40,0.95); backdrop-filter: blur(16px); border: 1px solid var(--border2); color: var(--text); padding: 11px 22px; border-radius: 50px; font-size: 0.85rem; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,0.5); transition: transform 0.4s cubic-bezier(.34,1.56,.64,1); z-index: 999; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    #fileInput { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- FONDOS -->
+<canvas id="starsCanvas"></canvas>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="orb orb4"></div>
+<div class="orb orb5"></div>
+<div class="beam beam1"></div>
+<div class="beam beam2"></div>
+<div class="beam beam3"></div>
+
+<!-- Decoracion esquina sup derecha -->
+<div class="cdeco" style="top:16px;right:20px;opacity:0.16;">
+  <svg width="90" height="90" viewBox="0 0 90 90" fill="none">
+    <circle cx="45" cy="45" r="42" stroke="#6ee7f7" stroke-width="0.8" stroke-dasharray="4 7"/>
+    <circle cx="45" cy="45" r="28" stroke="#a78bfa" stroke-width="0.6" stroke-dasharray="3 6"/>
+    <circle cx="45" cy="45" r="5" fill="#6ee7f7" opacity="0.7"/>
+    <line x1="45" y1="3" x2="45" y2="17" stroke="#6ee7f7" stroke-width="0.8"/>
+    <line x1="45" y1="73" x2="45" y2="87" stroke="#6ee7f7" stroke-width="0.8"/>
+    <line x1="3" y1="45" x2="17" y2="45" stroke="#a78bfa" stroke-width="0.8"/>
+    <line x1="73" y1="45" x2="87" y2="45" stroke="#a78bfa" stroke-width="0.8"/>
+  </svg>
+</div>
+
+<!-- Decoracion esquina inf izquierda -->
+<div class="cdeco" style="bottom:24px;left:16px;opacity:0.13;">
+  <svg width="110" height="70" viewBox="0 0 110 70" fill="none">
+    <line x1="0" y1="35" x2="110" y2="35" stroke="#a78bfa" stroke-width="0.7"/>
+    <line x1="22" y1="0" x2="22" y2="70" stroke="#6ee7f7" stroke-width="0.7"/>
+    <line x1="66" y1="0" x2="66" y2="70" stroke="#f472b6" stroke-width="0.5"/>
+    <circle cx="22" cy="35" r="3.5" fill="#a78bfa" opacity="0.8"/>
+    <circle cx="66" cy="35" r="2.5" fill="#6ee7f7" opacity="0.7"/>
+    <rect x="90" y="20" width="14" height="14" rx="2" stroke="#f472b6" stroke-width="0.7" fill="none"/>
+  </svg>
+</div>
+
+<!-- Decoracion esquina sup izquierda -->
+<div class="cdeco" style="top:16px;left:16px;opacity:0.12;">
+  <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+    <polyline points="0,30 30,0 60,30 30,60 0,30" stroke="#6ee7f7" stroke-width="0.7" fill="none" stroke-dasharray="3 5"/>
+    <circle cx="30" cy="30" r="3" fill="#f472b6" opacity="0.7"/>
+  </svg>
+</div>
+
+<div class="layout">
+
+  <!-- COLUMNA FORMULARIO -->
+  <div class="form-col">
+
+    <div class="header">
+      <div class="header-badge">🏐 Sistema de asistencia</div>
+      <h1>Registro del día</h1>
+      <p>Completa los datos para marcar tu asistencia</p>
+    </div>
+
+    <!-- FOTO DE PERFIL -->
+    <div class="card">
+      <div class="card-title">
+        <div class="icon-wrap teal">👤</div>
+        Mi foto de perfil
+      </div>
+      <div class="profile-row">
+        <div class="avatar-ring">
+          <div class="profile-avatar" id="avatarEl" style="width:110px;height:110px;font-size:2.5rem;">
+            🙂<img id="avatarImg" alt="Foto de perfil"/>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:14px;">
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📷 Subir foto de perfil</button>
+        <button class="btn btn-danger" onclick="removeProfilePhoto()">🗑️ Eliminar foto</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" onchange="loadProfilePhoto(event)"/>
+      <p class="note">Esta foto se guarda de forma permanente y no se mezcla con los registros de asistencia.</p>
+    </div>
+
+    <!-- DATOS DE ASISTENCIA -->
+    <div class="card">
+      <div class="card-title">
+        <div class="icon-wrap purple">📋</div>
+        Datos de asistencia
+      </div>
+
+      <div class="field-group">
+        <label>Nombre completo</label>
+        <input type="text" id="nombre" placeholder="Ej. Ana Pérez"/>
+      </div>
+
+      <div class="field-group">
+        <label>DNI</label>
+        <input type="text" id="idEmpleado" placeholder="Ej. 12345678" maxlength="8"
+          oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)"
+          inputmode="numeric" pattern="\d{8}"/>
+        <div id="dniError" style="display:none;font-size:0.76rem;color:#fb7185;margin-top:5px;padding-left:4px;">⚠️ El DNI debe tener exactamente 8 dígitos</div>
+      </div>
+
+      <div class="section-head"><span>📍 Ubicación GPS</span></div>
+      <button class="btn btn-dark" onclick="getLocation()" style="border-radius:var(--r-sm)">📡 Obtener mi ubicación</button>
+      <div class="gps-status" id="gpsStatus">🌐 Sin ubicación aún</div>
+
+      <div class="section-head" style="margin-top:20px"><span>📸 Foto del registro</span></div>
+      <button class="btn btn-cam" id="btnOpenCam" onclick="openCamera()" style="border-radius:var(--r-sm)">📷 Abrir cámara</button>
+      <div id="cameraError" class="cam-error"></div>
+
+      <div class="camera-container" id="cameraContainer">
+        <video id="video" autoplay playsinline></video>
+        <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+        <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+      </div>
+      <canvas id="canvas"></canvas>
+
+      <div class="camera-controls" id="cameraControls">
+        <button class="btn btn-primary" onclick="takePhoto()">📸 Capturar</button>
+        <button class="btn btn-danger" onclick="stopCamera()">✖ Cerrar</button>
+      </div>
+
+      <img id="photoPreview" class="photo-preview" alt="Foto capturada"/>
+      <div id="photoActions" style="display:none;margin-top:10px">
+        <button class="btn btn-ghost" style="border-radius:var(--r-sm)" onclick="retakePhoto()">🔄 Tomar otra foto</button>
+      </div>
+    </div>
+
+    <button class="btn-submit" onclick="submitForm()">✅ Registrar asistencia</button>
+  </div>
+
+  <!-- COLUMNA DERECHA -->
+  <div class="db-col">
+
+    <!-- REGISTROS -->
+    <div class="db-card">
+      <div class="db-header">
+        <div class="db-header-left">
+          <div class="icon-wrap" style="background:rgba(244,114,182,0.15);border:1px solid rgba(244,114,182,0.2);">🗄️</div>
+          <span class="db-header-title">Registros del día</span>
+          <span id="dbCount">0 registros</span>
+        </div>
+        <button class="btn-clear" onclick="clearDB()">🗑 Limpiar</button>
+      </div>
+      <div class="db-scroll">
+        <div id="dbEmpty">📭 Aún no hay registros.<br/>Los registros aparecerán aquí.</div>
+        <div id="dbList"></div>
+      </div>
+    </div>
+
+    <!-- QR GENERATOR -->
+    <div class="qr-card">
+      <div class="db-header">
+        <div class="db-header-left">
+          <div class="icon-wrap pink">🔲</div>
+          <span class="db-header-title">Generar QR</span>
+        </div>
+      </div>
+      <div class="qr-body">
+        <div class="qr-size-row">
+          <label>Tamaño</label>
+          <select id="qrSize">
+            <option value="180">Pequeño (180px)</option>
+            <option value="220" selected>Mediano (220px)</option>
+            <option value="280">Grande (280px)</option>
+          </select>
+        </div>
+        <div class="qr-input-row">
+          <input type="text" id="qrInput" placeholder="URL o texto para el QR…" />
+          <button onclick="generateQR()">⚡ Generar</button>
+        </div>
+
+        <!-- Botón rápido: QR de esta página -->
+        <button class="qr-btn-page" onclick="generatePageQR()">🏐 QR de esta página</button>
+
+        <div style="height:14px;"></div>
+
+        <div id="qrDisplay" class="hidden">
+          <div id="qrcode"></div>
+          <div class="qr-label" id="qrLabel"></div>
+          <div class="qr-actions">
+            <button onclick="downloadQR()">⬇️ Descargar</button>
+            <button onclick="copyQRUrl()">📋 Copiar URL</button>
+          </div>
+        </div>
+
+        <div id="qrPlaceholder" class="qr-placeholder">
+          🔲 Ingresa una URL o texto<br/>y genera tu código QR
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ===== ESTRELLAS + PELOTAS DE VÓLEY FLOTANDO ===== */
+  (function() {
+    const cv = document.getElementById('starsCanvas');
+    const cx = cv.getContext('2d');
+    let stars = [], volleyballs = [];
+
+    function resize() { cv.width = window.innerWidth; cv.height = window.innerHeight; }
+
+    function init() {
+      stars = [];
+      volleyballs = [];
+      const n = Math.floor((cv.width * cv.height) / 7000);
+      const cols = ['#6ee7f7','#a78bfa','#f472b6','#ffffff','#b0e0ff'];
+      for (let i = 0; i < n; i++) {
+        stars.push({
+          x: Math.random() * cv.width,
+          y: Math.random() * cv.height,
+          r: Math.random() * 1.4 + 0.2,
+          c: cols[Math.floor(Math.random() * cols.length)],
+          sp: Math.random() * 0.016 + 0.004,
+          ph: Math.random() * Math.PI * 2
+        });
+      }
+      // Más pelotas de vóley — mayor cantidad y tamaños variados
+      const vcount = Math.max(8, Math.floor(cv.width / 110));
+      for (let i = 0; i < vcount; i++) {
+        volleyballs.push({
+          x: Math.random() * cv.width,
+          y: Math.random() * cv.height,
+          r: Math.random() * 22 + 10,
+          vx: (Math.random() - 0.5) * 0.65,
+          vy: (Math.random() - 0.5) * 0.55,
+          rot: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.014,
+          opacity: Math.random() * 0.28 + 0.10,
+          pulse: Math.random() * Math.PI * 2,
+          pulseSpeed: Math.random() * 0.009 + 0.003
+        });
+      }
+    }
+
+    function drawVolleyball(ctx, x, y, r, rot, alpha) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.globalAlpha = alpha;
+
+      /* Cuerpo */
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fill();
+
+      /* Brillo suave interior */
+      const grad = ctx.createRadialGradient(-r*0.3, -r*0.3, r*0.05, 0, 0, r);
+      grad.addColorStop(0, 'rgba(255,255,255,0.18)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      /* Borde exterior */
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(110,231,247,0.6)';
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+
+      /* Líneas del voley - patrón clásico */
+      ctx.strokeStyle = 'rgba(167,139,250,0.7)';
+      ctx.lineWidth = 0.8;
+      // Arco izquierdo
+      ctx.beginPath();
+      ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
+      // Arco derecho
+      ctx.beginPath();
+      ctx.arc(0, 0, r, Math.PI / 2, Math.PI * 1.5);
+      ctx.stroke();
+
+      // Elipse horizontal
+      ctx.strokeStyle = 'rgba(244,114,182,0.65)';
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.88, r, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Elipse vertical
+      ctx.strokeStyle = 'rgba(110,231,247,0.55)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.88, Math.PI / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      /* Línea ecuatorial */
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 0.65;
+      ctx.beginPath();
+      ctx.moveTo(-r, 0);
+      ctx.lineTo(r, 0);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    let frameT = 0;
+    function draw() {
+      frameT++;
+      cx.clearRect(0, 0, cv.width, cv.height);
+
+      /* Estrellas */
+      stars.forEach(s => {
+        cx.beginPath();
+        cx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        cx.fillStyle = s.c;
+        cx.globalAlpha = 0.12 + 0.65 * (0.5 + 0.5 * Math.sin(frameT * s.sp + s.ph));
+        cx.fill();
+      });
+      cx.globalAlpha = 1;
+
+      /* Pelotas de vóley */
+      volleyballs.forEach(v => {
+        const pulseAlpha = v.opacity * (0.75 + 0.25 * Math.sin(frameT * v.pulseSpeed + v.pulse));
+        drawVolleyball(cx, v.x, v.y, v.r, v.rot, pulseAlpha);
+
+        v.x += v.vx;
+        v.y += v.vy;
+        v.rot += v.rotSpeed;
+
+        if (v.x < -v.r * 2) v.x = cv.width + v.r;
+        if (v.x > cv.width + v.r * 2) v.x = -v.r;
+        if (v.y < -v.r * 2) v.y = cv.height + v.r;
+        if (v.y > cv.height + v.r * 2) v.y = -v.r;
+      });
+    }
+
+    resize();
+    init();
+    (function loop() {
+      draw();
+      requestAnimationFrame(loop);
+    })();
+    window.addEventListener('resize', () => { resize(); init(); });
+  })();
+
+  /* ===== QR GENERATOR ===== */
+  let qrInstance = null;
+  let lastQrUrl = '';
+
+  function generateQR(urlOverride) {
+    const raw = urlOverride || document.getElementById('qrInput').value.trim();
+    if (!raw) { showToast('⚠️ Ingresa una URL o texto'); return; }
+    const size = parseInt(document.getElementById('qrSize').value) || 220;
+
+    lastQrUrl = raw;
+    document.getElementById('qrPlaceholder').style.display = 'none';
+    document.getElementById('qrDisplay').classList.remove('hidden');
+    document.getElementById('qrLabel').textContent = raw.length > 50 ? raw.slice(0,47)+'…' : raw;
+
+    const container = document.getElementById('qrcode');
+    container.innerHTML = '';
+
+    qrInstance = new QRCode(container, {
+      text: raw,
+      width: size,
+      height: size,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    showToast('✅ QR generado');
+  }
+
+  function generatePageQR() {
+    const url = window.location.href;
+    document.getElementById('qrInput').value = url;
+    generateQR(url);
+  }
+
+  function downloadQR() {
+    const canvas = document.querySelector('#qrcode canvas');
+    const img = document.querySelector('#qrcode img');
+    let dataUrl;
+    if (canvas) {
+      dataUrl = canvas.toDataURL('image/png');
+    } else if (img) {
+      dataUrl = img.src;
+    } else {
+      showToast('❌ No hay QR generado aún'); return;
+    }
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'qr_asistencia.png';
+    a.click();
+    showToast('⬇️ QR descargado');
+  }
+
+  function copyQRUrl() {
+    if (!lastQrUrl) { showToast('❌ No hay URL generada'); return; }
+    navigator.clipboard.writeText(lastQrUrl).then(() => showToast('📋 URL copiada al portapapeles'));
+  }
+
+  /* ===== APP ===== */
+  let stream = null, capturedPhotoDataUrl = null, locationData = null;
+  const DB_KEY = 'asistencia_registros';
+
+  function loadProfilePhoto(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.getElementById('avatarImg');
+      img.src = ev.target.result; img.style.display = 'block';
+      const el = document.getElementById('avatarEl');
+      el.textContent = ''; el.appendChild(img);
+      localStorage.setItem('profilePhoto', ev.target.result);
+      showToast('✅ Foto de perfil guardada');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeProfilePhoto() {
+    const img = document.getElementById('avatarImg');
+    img.src = ''; img.style.display = 'none';
+    const el = document.getElementById('avatarEl');
+    el.textContent = '🙂'; el.appendChild(img);
+    localStorage.removeItem('profilePhoto');
+    showToast('🗑️ Foto eliminada');
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('profilePhoto');
+    if (saved) {
+      const img = document.getElementById('avatarImg');
+      img.src = saved; img.style.display = 'block';
+      const el = document.getElementById('avatarEl');
+      el.textContent = ''; el.appendChild(img);
+    }
+    renderDB();
+    // Auto-generar QR de la página al cargar
+    setTimeout(() => generatePageQR(), 600);
+  });
+
+  function getLocation() {
+    const s = document.getElementById('gpsStatus');
+    s.className = 'gps-status'; s.textContent = '⏳ Obteniendo ubicación...';
+    if (!navigator.geolocation) { s.className = 'gps-status error'; s.textContent = '❌ Geolocalización no soportada'; return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => { locationData = {lat:pos.coords.latitude,lng:pos.coords.longitude}; s.className='gps-status ok'; s.textContent=`✅ Lat: ${locationData.lat.toFixed(5)}, Lng: ${locationData.lng.toFixed(5)}`; showToast('📍 Ubicación obtenida'); },
+      err => { s.className='gps-status error'; s.textContent='❌ '+err.message; },
+      {enableHighAccuracy:true,timeout:10000}
+    );
+  }
+
+  async function openCamera() {
+    const btnOpen = document.getElementById('btnOpenCam');
+    const errEl = document.getElementById('cameraError');
+    errEl.style.display = 'none';
+    btnOpen.innerHTML = '⏳ Iniciando cámara...'; btnOpen.disabled = true;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      const video = document.getElementById('video');
+      video.srcObject = stream; await video.play();
+      document.getElementById('cameraContainer').classList.add('visible');
+      document.getElementById('cameraControls').style.display = 'flex';
+      btnOpen.style.display = 'none'; btnOpen.disabled = false;
+      document.getElementById('photoPreview').classList.remove('visible');
+      document.getElementById('photoActions').style.display = 'none';
+      capturedPhotoDataUrl = null;
+    } catch(err) {
+      stream = null; btnOpen.innerHTML = '📷 Abrir cámara'; btnOpen.disabled = false;
+      let msg = '❌ Error: '+err.name+' — '+err.message;
+      if (err.name==='NotAllowedError'||err.name==='PermissionDeniedError') msg='🔒 Permiso denegado. Haz clic en el 🔒 → Cámara → Permitir → recarga con F5.';
+      else if (err.name==='NotFoundError') msg='❌ No se detectó ninguna cámara.';
+      else if (err.name==='NotReadableError') msg='❌ La cámara está en uso por otra app.';
+      errEl.innerHTML = msg; errEl.style.display = 'block';
+    }
+  }
+
+  function takePhoto() {
+    const video = document.getElementById('video'), canvas = document.getElementById('canvas');
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);
+    capturedPhotoDataUrl = canvas.toDataURL('image/jpeg',0.92);
+    const preview = document.getElementById('photoPreview');
+    preview.src = capturedPhotoDataUrl; preview.classList.add('visible');
+    document.getElementById('photoActions').style.display = 'block';
+    stopCamera(true); showToast('📸 Foto capturada');
+  }
+
+  function stopCamera(keepPreview=false) {
+    if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    document.getElementById('cameraContainer').classList.remove('visible');
+    document.getElementById('cameraControls').style.display = 'none';
+    if (!keepPreview) { document.getElementById('photoPreview').classList.remove('visible'); document.getElementById('photoActions').style.display='none'; capturedPhotoDataUrl=null; }
+    const btn = document.getElementById('btnOpenCam');
+    btn.innerHTML = '📷 Abrir cámara'; btn.style.display = 'flex';
+  }
+
+  function retakePhoto() {
+    document.getElementById('photoPreview').classList.remove('visible');
+    document.getElementById('photoActions').style.display = 'none';
+    capturedPhotoDataUrl = null; openCamera();
+  }
+
+  function getDB() { try { return JSON.parse(localStorage.getItem(DB_KEY))||[]; } catch { return []; } }
+  function saveDB(d) { localStorage.setItem(DB_KEY,JSON.stringify(d)); }
+
+  function renderDB() {
+    const records = getDB();
+    const empty = document.getElementById('dbEmpty');
+    const list = document.getElementById('dbList');
+    const count = document.getElementById('dbCount');
+    count.textContent = records.length+(records.length===1?' registro':' registros');
+    if (records.length===0) { empty.style.display='block'; list.innerHTML=''; return; }
+    empty.style.display = 'none'; list.innerHTML = '';
+    [...records].reverse().forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'record-item';
+      const photoEl = r.photo ? `<img src="${r.photo}" class="rec-photo" alt=""/>` : `<div class="rec-avatar">🙂</div>`;
+      const gpsEl = r.lat ? `<div class="rec-gps"><a href="https://maps.google.com/?q=${r.lat},${r.lng}" target="_blank">📍 Ver mapa</a></div>` : '';
+      div.innerHTML = `${photoEl}<div class="rec-info"><div class="rec-name">${r.nombre}</div><div class="rec-dni">${r.dni}</div>${gpsEl}</div><div class="rec-meta"><div class="rec-hora">${r.hora}</div><div class="rec-fecha">${r.fecha}</div></div>`;
+      list.appendChild(div);
+    });
+  }
+
+  function clearDB() {
+    if (!confirm('¿Eliminar todos los registros?')) return;
+    localStorage.removeItem(DB_KEY); renderDB(); showToast('🗑️ Base de datos limpiada');
+  }
+
+  function submitForm() {
+    const nombre = document.getElementById('nombre').value.trim();
+    const id = document.getElementById('idEmpleado').value.trim();
+    const dniErr = document.getElementById('dniError');
+    if (!nombre) { showToast('⚠️ Ingresa tu nombre completo'); return; }
+    if (id.length!==8) { dniErr.style.display='block'; document.getElementById('idEmpleado').focus(); return; }
+    else { dniErr.style.display='none'; }
+    if (!locationData) { showToast('⚠️ Obtén tu ubicación GPS primero'); return; }
+    if (!capturedPhotoDataUrl) { showToast('⚠️ Toma una foto para el registro'); return; }
+    const now = new Date();
+    const record = { nombre, dni:id, lat:locationData?.lat||null, lng:locationData?.lng||null, photo:capturedPhotoDataUrl, fecha:now.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}), hora:now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}), ts:now.getTime() };
+    const db = getDB(); db.push(record); saveDB(db); renderDB();
+    document.getElementById('nombre').value = '';
+    document.getElementById('idEmpleado').value = '';
+    document.getElementById('gpsStatus').className = 'gps-status';
+    document.getElementById('gpsStatus').textContent = '🌐 Sin ubicación aún';
+    locationData=null; capturedPhotoDataUrl=null;
+    document.getElementById('photoPreview').classList.remove('visible');
+    document.getElementById('photoActions').style.display = 'none';
+    showToast('✅ ¡Asistencia registrada y guardada!');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),3000);
+  }
+</script>
+</body>
+</html>
